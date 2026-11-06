@@ -1,0 +1,6 @@
+[
+  {"preferred": "Lumio Invoice", "banned": ["LumioInvoice", "Lumio invoice", "Lumio Invoices", "lumio invoice"], "kind": "product",
+   "note": "Always two words, capital L and capital I.", "case_sensitive": true},
+  {"preferred": "customers", "banned": ["clients"], "kind": "term", "note": "", "case_sensitive": false},
+  {"preferred": "affordable", "banned": ["cheap", "cheapest"], "kind": "term", "note": "", "case_sensitive": false}
+]

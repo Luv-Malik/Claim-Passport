@@ -1,0 +1,9 @@
+Flask>=3.0
+PyJWT>=2.7
+pypdf>=5.0
+python-docx>=1.1
+Pillow>=10.0
+# Optional: reads text inside images (needs the Tesseract program installed on the machine)
+pytesseract>=0.3.10
+# Production server
+gunicorn>=22.0

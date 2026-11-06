@@ -1,0 +1,11 @@
+services:
+  claim-passport:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      CP_SECRET_KEY: "${CP_SECRET_KEY:-change-me-to-a-long-random-string}"
+      CP_SEED_DEMO: "${CP_SEED_DEMO:-1}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    volumes: ["cp-data:/data"]
+volumes:
+  cp-data:

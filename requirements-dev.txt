@@ -1,0 +1,3 @@
+-r requirements.txt
+reportlab>=4.0     # only for scripts/make_sample_assets.py
+playwright>=1.40   # only for the optional browser smoke test (tests/ui_smoke.py)
