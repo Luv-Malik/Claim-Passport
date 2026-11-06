@@ -438,8 +438,7 @@ Details and suggested next tasks: **[docs/ROADMAP.md](docs/ROADMAP.md)**.
 | 🧱 | **Aditi Singh** | Platform and security: database, workflow, watcher, transparency log |
 | 🎨 | **Aanya Gupta** | Frontend, insights and demo: screens, dashboard, presentation |
 
-Built for the **Inkloom AI** problem statement. Parts of the code and documents were drafted with help from an AI assistant (Claude by Anthropic). Please review everything before relying on it.
-
+Built for the **Inkloom AI** problem statement. 
 ## 📄 License
 
 MIT. See [LICENSE](LICENSE).
