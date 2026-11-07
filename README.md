@@ -329,7 +329,7 @@ scripts/              sample file generator, demo helper
 ```
 </details>
 
-### 📥 What happens to one file
+### 📥 What happens to one uploaded file
 
 <div align="center"><img src="docs/assets/file-journey.png" alt="File journey" width="92%"></div>
 
