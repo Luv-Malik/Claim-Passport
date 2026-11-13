@@ -1,88 +1,17 @@
-"""Tiny SQLite layer. The SQL is plain and standard, so moving to PostgreSQL later is easy
-(see docs/ROADMAP.md)."""
+"""Small database layer for SQLite (default) and PostgreSQL.
+
+The SQL in the app is plain and standard. Queries are written with `?` placeholders; for PostgreSQL they are
+translated to `%s` here. The schema comes from versioned migrations (see migrations.py), not from this file.
+
+Choose the database with CP_DATABASE_URL (for example postgresql://user:pass@host:5432/claimpassport).
+If it is empty, the SQLite file in CP_DB_PATH is used."""
 import json
 import sqlite3
 import threading
 from pathlib import Path
 
-SCHEMA = """
-PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS users(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('creator','reviewer','manager','admin')),
-  team TEXT DEFAULT '', created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS guideline_docs(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, version TEXT DEFAULT '1',
-  content TEXT NOT NULL, created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS rules(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, category TEXT NOT NULL,
-  title TEXT NOT NULL, description TEXT DEFAULT '', severity TEXT DEFAULT 'medium',
-  kind TEXT NOT NULL, config TEXT DEFAULT '{}', guideline_ref TEXT DEFAULT '',
-  human_lock INTEGER DEFAULT 0, active INTEGER DEFAULT 1);
-CREATE TABLE IF NOT EXISTS glossary(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, preferred TEXT NOT NULL, banned TEXT DEFAULT '[]',
-  kind TEXT DEFAULT 'term', note TEXT DEFAULT '', case_sensitive INTEGER DEFAULT 0);
-CREATE TABLE IF NOT EXISTS assets(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, kind TEXT DEFAULT 'config',
-  value TEXT DEFAULT '{}', notes TEXT DEFAULT '');
-CREATE TABLE IF NOT EXISTS facts(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE NOT NULL, statement TEXT NOT NULL,
-  value TEXT DEFAULT '', category TEXT DEFAULT 'general', source_doc TEXT DEFAULT '',
-  source_ref TEXT DEFAULT '', owner TEXT DEFAULT '', confidential INTEGER DEFAULT 0,
-  verified_on TEXT, expires_on TEXT, review_interval_days INTEGER DEFAULT 90,
-  version INTEGER DEFAULT 1, keywords TEXT DEFAULT '', active INTEGER DEFAULT 1, updated_at TEXT);
-CREATE TABLE IF NOT EXISTS fact_versions(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, fact_id INTEGER NOT NULL, version INTEGER NOT NULL,
-  statement TEXT, value TEXT, verified_on TEXT, expires_on TEXT, changed_by TEXT,
-  changed_at TEXT, note TEXT DEFAULT '');
-CREATE TABLE IF NOT EXISTS contents(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, fmt TEXT NOT NULL,
-  owner_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'draft', current_version INTEGER DEFAULT 1,
-  channel TEXT DEFAULT 'website', ai_assisted INTEGER DEFAULT 0, filename TEXT DEFAULT '',
-  created_at TEXT, updated_at TEXT, published_at TEXT, needs_refresh INTEGER DEFAULT 0);
-CREATE TABLE IF NOT EXISTS content_versions(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, version INTEGER NOT NULL,
-  text TEXT NOT NULL, meta TEXT DEFAULT '{}', analysis TEXT DEFAULT '{}', note TEXT DEFAULT '',
-  created_by INTEGER, created_at TEXT);
-CREATE TABLE IF NOT EXISTS findings(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, version INTEGER NOT NULL,
-  rule_code TEXT NOT NULL, category TEXT, severity TEXT, span_start INTEGER, span_end INTEGER,
-  excerpt TEXT, message TEXT, source_type TEXT, source_ref TEXT, source_id INTEGER,
-  source_confidential INTEGER DEFAULT 0, confidence TEXT, confidence_score REAL,
-  suggestions TEXT DEFAULT '[]', needs_human INTEGER DEFAULT 0, human_lock INTEGER DEFAULT 0,
-  decision TEXT DEFAULT 'open', decision_by INTEGER, decision_reason TEXT, final_text TEXT,
-  apply_start INTEGER, apply_end INTEGER, decided_at TEXT, produced_by TEXT DEFAULT 'rules',
-  created_at TEXT);
-CREATE TABLE IF NOT EXISTS comments(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, version INTEGER,
-  author_id INTEGER, body TEXT NOT NULL, anchor_start INTEGER, anchor_end INTEGER, created_at TEXT);
-CREATE TABLE IF NOT EXISTS approvals(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, version INTEGER,
-  user_id INTEGER, decision TEXT, note TEXT DEFAULT '', created_at TEXT);
-CREATE TABLE IF NOT EXISTS publications(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, version INTEGER,
-  published_at TEXT, published_by INTEGER, snapshot TEXT DEFAULT '{}', active INTEGER DEFAULT 1);
-CREATE TABLE IF NOT EXISTS passports(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, publication_id INTEGER,
-  fact_id INTEGER, fact_version INTEGER, claim_text TEXT, matched_raw TEXT DEFAULT '',
-  approved_by INTEGER, created_at TEXT, active INTEGER DEFAULT 1);
-CREATE TABLE IF NOT EXISTS refresh_proposals(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, passport_id INTEGER,
-  old_text TEXT, new_text TEXT, message TEXT, status TEXT DEFAULT 'open', created_at TEXT,
-  resolved_by INTEGER, resolved_at TEXT);
-CREATE TABLE IF NOT EXISTS notifications(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, message TEXT NOT NULL,
-  ref TEXT DEFAULT '', link TEXT DEFAULT '', created_at TEXT, read INTEGER DEFAULT 0);
-CREATE TABLE IF NOT EXISTS audit_log(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, action TEXT, entity TEXT,
-  entity_id INTEGER, detail TEXT DEFAULT '');
-CREATE TABLE IF NOT EXISTS ai_log(
-  id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, content_id INTEGER, step TEXT, engine TEXT,
-  model TEXT, data_sent TEXT, masked_items INTEGER DEFAULT 0, note TEXT DEFAULT '');
-CREATE INDEX IF NOT EXISTS idx_findings_content ON findings(content_id, version);
-CREATE INDEX IF NOT EXISTS idx_passports_fact ON passports(fact_id, active);
-"""
+# Tables whose primary key is not an auto-numbered `id` column (so INSERT must not ask for RETURNING id).
+NO_ID_TABLES = {"settings", "notification_prefs", "schema_migrations"}
 
 
 def jdump(v):
@@ -98,34 +27,115 @@ def jload(s, default=None):
         return default
 
 
+def is_pg_url(target):
+    return str(target).lower().startswith(("postgres://", "postgresql://"))
+
+
+def to_pg(sql):
+    """`?` -> `%s` and a literal `%` -> `%%`, leaving text inside single quotes alone for `?` only."""
+    out, in_str = [], False
+    for ch in sql:
+        if ch == "'":
+            in_str = not in_str
+            out.append(ch)
+        elif ch == "%":
+            out.append("%%")
+        elif ch == "?" and not in_str:
+            out.append("%s")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _load_psycopg():
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError as exc:                                   # pragma: no cover - depends on the install
+        raise RuntimeError("PostgreSQL needs the 'psycopg' package: pip install 'psycopg[binary]'") from exc
+
+    class _Driver:
+        KIND = "psycopg3"
+
+        @staticmethod
+        def connect(url):
+            return psycopg.connect(url, autocommit=True, row_factory=dict_row)
+    return _Driver
+
+
 class DB:
-    def __init__(self, path):
-        self.path = str(path)
-        if self.path != ":memory:":
-            Path(self.path).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
+    def __init__(self, target, driver=None):
+        self.target = str(target)
+        self.path = self.target                      # kept for older code
+        self.pg = is_pg_url(self.target)
         self.lock = threading.RLock()
-        self.conn.execute("PRAGMA foreign_keys=ON")
+        if self.pg:
+            self.driver = driver or _load_psycopg()
+            self.conn = self.driver.connect(self.target)
+        else:
+            if self.target != ":memory:":
+                Path(self.target).parent.mkdir(parents=True, exist_ok=True)
+            self.conn = sqlite3.connect(self.target, check_same_thread=False)
+            self.conn.row_factory = sqlite3.Row
+            self.conn.execute("PRAGMA foreign_keys=ON")
+
+    @property
+    def kind(self):
+        return "postgresql" if self.pg else "sqlite"
+
+    # ------------------------------------------------------------ schema
+    def exec_ddl(self, statements):
+        """Run one or more schema statements. `{PK}` becomes the right auto-number column for this database."""
+        if isinstance(statements, str):
+            statements = [statements]
+        pk = "SERIAL PRIMARY KEY" if self.pg else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        with self.lock:
+            for st in statements:
+                st = st.replace("{PK}", pk)
+                if self.pg:
+                    self.conn.execute(to_pg(st), ())
+                else:
+                    self.conn.execute(st)
+            if not self.pg:
+                self.conn.commit()
 
     def init(self):
-        with self.lock:
-            self.conn.executescript(SCHEMA)
-            self.conn.commit()
+        from . import migrations
+        migrations.migrate(self)
+
+    # ------------------------------------------------------------ queries
+    @staticmethod
+    def _params(params):
+        return tuple(int(p) if isinstance(p, bool) else p for p in params)
 
     def q(self, sql, params=()):
         with self.lock:
-            return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
+            if self.pg:
+                cur = self.conn.execute(to_pg(sql), self._params(params))
+                return [dict(r) for r in cur.fetchall()] if cur.description else []
+            return [dict(r) for r in self.conn.execute(sql, self._params(params)).fetchall()]
 
     def one(self, sql, params=()):
         rows = self.q(sql, params)
         return rows[0] if rows else None
 
     def run(self, sql, params=()):
+        """Run a write. Returns the new row id for INSERTs, otherwise the number of rows changed."""
         with self.lock:
-            cur = self.conn.execute(sql, params)
+            if self.pg:
+                text = sql.strip()
+                if text[:6].upper() == "INSERT" and " RETURNING " not in text.upper():
+                    table = text.split()[2].split("(")[0].lower()
+                    if table not in NO_ID_TABLES:
+                        text += " RETURNING id"
+                cur = self.conn.execute(to_pg(text), self._params(params))
+                if cur.description:
+                    rows = cur.fetchall()
+                    return rows[0]["id"] if rows else None
+                return cur.rowcount
+            cur = self.conn.execute(sql, self._params(params))
             self.conn.commit()
-            return cur.lastrowid
+            return cur.lastrowid if sql.lstrip()[:6].upper() == "INSERT" else cur.rowcount
 
     def insert(self, table, data):
         cols = ",".join(data)

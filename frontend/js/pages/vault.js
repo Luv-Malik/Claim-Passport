@@ -16,6 +16,8 @@ function factModal(f) {
       <div><label>Review every (days)</label><input name="review_interval_days" value="${v("review_interval_days") || 90}"></div><div><label>Search keywords</label><input name="keywords" value="${v("keywords")}"></div></div>
       <label class="inline"><input type="checkbox" name="confidential" ${f && f.confidential ? raw("checked") : ""}> Confidential (hidden from writers and the public feed)</label>` });
 }
+change("logo-up", async el => { const fd = new FormData(); fd.append("file", el.files[0]); await api("/api/vault/logo", { form: fd }); toast("Logo saved."); window.render(); });
+act("logo-del", async () => { await api("/api/vault/logo", { method: "DELETE" }); window.render(); });
 act("fact-new", () => factModal(null));
 act("fact-edit", async el => { const { facts } = await api("/api/vault/facts"); factModal(facts.find(f => f.id == el.dataset.id)); });
 act("fact-history", async el => { const { history } = await api(`/api/vault/facts/${el.dataset.id}/history`);
@@ -63,7 +65,12 @@ export default async function () {
       <table><thead><tr><th>Use this</th><th>Instead of</th><th>Note</th>${edit() ? h`<th></th>` : ""}</tr></thead><tbody>${glossary.map(g => h`<tr><td><b>${g.preferred}</b></td><td>${g.banned.map(b => h`<span class="pill red" style="margin:2px">${b}</span>`)}</td><td class="small muted">${g.note}</td>${edit() ? h`<td><button class="btn small ghost" data-act="glossary-del" data-id="${g.id}">Delete</button></td>` : ""}</tr>`)}</tbody></table>`;
   } else if (tab === "assets") {
     const { assets } = await api("/api/vault/assets");
-    body = h`${assets.map(a => h`<div style="margin-bottom:20px"><h3>${a.name === "palette" ? "Brand colours" : a.name === "fonts" ? "Brand fonts" : "Image rules"}</h3>
+    const logoA = assets.find(a => a.name === "logo"), hasLogo = !!(logoA && logoA.value && logoA.value.has_image);
+    if (hasLogo) later(async () => { try { const r = await fetch("/api/vault/logo", { headers: { Authorization: "Bearer " + state.token } }); const im = $("#logoimg"); if (r.ok && im) im.src = URL.createObjectURL(await r.blob()); } catch (e) { /* preview is optional */ } });
+    body = h`<div style="margin-bottom:20px"><h3>Brand logo</h3><div class="row">${hasLogo ? h`<img id="logoimg" alt="Approved logo" style="height:64px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px">` : h`<span class="muted small">No logo uploaded. Without one, the logo check (V-4) is skipped.</span>`}
+      ${edit() ? h`<label class="btn small ghost" style="margin:0">${icon("upload")}${hasLogo ? "Replace logo" : "Upload logo"}<input type="file" accept="image/png,image/jpeg,image/webp" data-change="logo-up" hidden></label>${hasLogo ? h`<button class="btn small ghost" data-act="logo-del">Remove</button>` : ""}` : ""}</div>
+      <div class="tiny muted" style="margin-top:6px">Images are searched for this logo at different sizes. Slides and PDF pages are not searched.</div></div>
+    ${assets.filter(a => a.name !== "logo").map(a => h`<div style="margin-bottom:20px"><h3>${a.name === "palette" ? "Brand colours" : a.name === "fonts" ? "Brand fonts" : "Image rules"}</h3>
       ${a.name === "palette" ? h`<div>${a.value.map(c => h`<span class="swatch" data-act="copyhex" data-hex="${c.hex}" data-tip="Click to copy"><i style="background:${c.hex}"></i><span>${c.name}<div class="tiny muted">${c.hex}</div></span></span>`)}</div>`
         : a.name === "fonts" ? h`<div class="row">${a.value.map(f => h`<span class="card tight" style="font-family:${f};font-size:22px">${f}<div class="tiny muted" style="font-family:Inter,sans-serif">Aa Bb Cc 123</div></span>`)}</div>`
         : h`<div class="small">Minimum width: <b>${a.value.min_width}px</b> · Allowed width-to-height ratios: ${(a.value.ratios || []).map(r => h`<span class="pill">${r.toFixed(2)}</span> `)}</div>`}</div>`)}

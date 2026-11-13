@@ -92,6 +92,8 @@ def seed_demo(db, cfg=None, llm=None):
         workflow.create_content(db, cfg, rohan, "Instagram banner", r["fmt"], r["text"], r["meta"], "social", filename="banner.png")
 
     _history(db, cfg, priya, rohan, kabir, today)
+    # Demo history must never be emailed out: only alerts created after the demo is set up are sent.
+    db.run("UPDATE alert_queue SET status='skipped' WHERE status='pending'")
     audit.log(db, "system", "seed.demo", "system", None, {"users": len(DEMO_USERS)})
     return True
 

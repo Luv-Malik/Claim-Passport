@@ -2,7 +2,7 @@ import { h, raw, esc, state, api, act, later, modal, toast, $, $$, icon, pill, s
 import { gauge, radar, donut, legend, stepper } from "../charts.js";
 import { okArt } from "../art.js";
 
-let tab = "comments", FL = "all", focusId = null;
+let pdfPage = 1, tab = "comments", FL = "all", focusId = null;
 const reload = () => window.render();
 const cid = () => state.ws.content.id;
 
@@ -35,7 +35,7 @@ function findingCard(f, d) {
       <div class="row" style="gap:6px">${f.human_lock ? h`<span class="pill lock" data-tip="A reviewer must decide on this one">${icon("lock")}Needs a person</span>` : ""}<span class="pill ${f.confidence === "high" ? "green" : f.confidence === "medium" ? "amber" : "red"}" data-tip="How sure the checker is">${f.confidence}</span></div></div>
     ${f.excerpt ? h`<div style="margin:9px 0 4px"><span class="ex">${f.excerpt.length > 90 ? f.excerpt.slice(0, 90) + "..." : f.excerpt}</span></div>` : ""}
     <div style="margin-top:4px">${f.message}</div>
-    <div class="src">${icon(f.source_type === "fact" ? "shield" : "book")}<span><b>${f.source_type === "fact" ? "Approved fact" : "Guideline"}:</b> ${f.source_ref}${f.produced_by === "rules+llm" ? " · includes AI rewrite ideas" : ""}</span></div>
+    <div class="src">${icon(f.source_type === "fact" ? "shield" : "book")}<span><b>${f.source_type === "fact" ? "Approved fact" : "Guideline"}:</b> ${f.source_ref}${f.produced_by === "rules+llm" ? " · includes AI rewrite ideas" : ""}${f.produced_by === "rules+ai-judge" ? " · AI-assisted finding (cited)" : f.produced_by === "semantic" ? " · found by meaning match" : ""}</span></div>
     ${done ? h`<div class="note"><div class="row sp"><span>${pill(f.decision, f.decision)} by <b>${f.decision_by_name || "someone"}</b>${f.decision_reason ? ": " + f.decision_reason : ""}</span>${can ? h`<button class="btn small ghost" data-act="decide" data-id="${f.id}" data-d="open">Undo</button>` : ""}</div>
         ${f.final_text != null ? h`<div class="small" style="margin-top:6px">Will change to: <span class="ex">${f.final_text === "" ? "(removed)" : f.final_text}</span></div>` : ""}</div>`
       : h`${sugg}${can ? h`<div class="row" style="margin-top:12px"><button class="btn small ghost" data-act="edit-finding" data-id="${f.id}" data-ex="${f.excerpt}">${icon("edit")}Write my own</button><button class="btn small ghost" data-act="reject-finding" data-id="${f.id}">Keep as written</button></div>` : ""}`}</div>`;
@@ -113,6 +113,27 @@ act("publish", () => modal({ title: "Publish this content?", submit: "Publish", 
 act("recheck", async () => { await api(`/api/contents/${cid()}/analyze`, { body: {} }); toast("Checked again."); reload(); });
 act("edit-text", () => modal({ title: "Edit text (creates a new version)", wide: true, submit: "Save new version", onSubmit: async fd => { await api(`/api/contents/${cid()}/versions`, { body: { text: fd.text, note: fd.note } }); reload(); },
   body: h`<label>Text</label><textarea name="text" style="min-height:320px">${state.ws.text}</textarea><label>What did you change?</label><input name="note" value="Edited by hand">` }));
+act("pdf-page", async el => { pdfPage = Number(el.dataset.p); await loadPdf(); });
+act("export-docx", async () => {
+  const rep = await api(`/api/contents/${cid()}/export/report`);
+    modal({ title: "Download corrected file", submit: "Download", wide: true, body: h`<p>${rep.applied.length} of ${rep.total} change(s) can be written into your original file with its formatting kept.</p>
+    ${rep.skipped.length ? h`<div class="warn"><b>${rep.skipped.length} change(s) were not applied</b> because they could not be placed safely:<ul>${rep.skipped.map(x => h`<li class="small">${x.reason || ""}: “${x.old}” → “${x.new}”</li>`)}</ul>Please make these by hand.</div>` : ""}`,
+    onSubmit: async () => { const r = await fetch(`/api/contents/${cid()}/export`, { headers: { Authorization: "Bearer " + state.token } });
+      if (!r.ok) throw new Error((await r.json()).error); const u = URL.createObjectURL(await r.blob()); const a = document.createElement("a");
+      a.href = u; a.download = (state.ws.content.filename || "content").replace(/(\.\w+)?$/, "-corrected$1"); a.click(); URL.revokeObjectURL(u); } });
+});
+async function loadPdf() {
+  const box = $("#pdfbox"); if (!box) return;
+  box.innerHTML = '<div class="skeleton" style="height:300px"></div>';
+  try {
+    const p = await api(`/api/contents/${cid()}/pages/${pdfPage}`);
+    box.innerHTML = h`<div class="row sp small" style="margin-bottom:8px"><span>Page ${p.page} of ${p.pages} · ${p.outlines.length} problem(s) outlined${p.not_outlined.length ? ` · ${p.not_outlined.length} could not be placed` : ""}${p.ocr ? " · read by OCR" : ""}</span>
+      <span class="row"><button class="btn small ghost" data-act="pdf-page" data-p="${p.page - 1}" ${p.page <= 1 ? raw("disabled") : ""}>Prev</button><button class="btn small ghost" data-act="pdf-page" data-p="${p.page + 1}" ${p.page >= p.pages ? raw("disabled") : ""}>Next</button></span></div>
+      <div style="position:relative;display:inline-block;max-width:100%"><img src="${p.image}" alt="PDF page ${p.page}" style="max-width:100%;display:block">
+      ${p.outlines.flatMap(o => o.boxes.map(bx => h`<a href="#f${o.finding_id}" data-act="pdf-focus" data-id="${o.finding_id}" title="${o.rule_code} (${o.severity})" style="position:absolute;left:${bx[0] / p.width * 100}%;top:${bx[1] / p.height * 100}%;width:${bx[2] / p.width * 100}%;height:${bx[3] / p.height * 100}%"></a>`))}</div>`.s;
+  } catch (e) { box.innerHTML = h`<div class="warn">${e.message}</div>`.s; }
+}
+act("pdf-focus", (el, e) => { if (e) e.preventDefault(); const f = document.getElementById("f" + el.dataset.id) || document.querySelector(`[data-fid="${el.dataset.id}"]`); if (f) f.scrollIntoView({ behavior: "smooth", block: "center" }); });
 act("alt-text", () => modal({ title: "Add alt text", onSubmit: async fd => { await api(`/api/contents/${cid()}/alt-text`, { body: fd }); reload(); }, body: h`<label>Describe the image in one short sentence</label><input name="alt_text" required>` }));
 act("copy-text", async () => { try { await navigator.clipboard.writeText(state.ws.text); toast("Text copied."); } catch (e) { toast("Could not copy. Select the text and copy it.", true); } });
 act("diff", async el => {
@@ -148,10 +169,10 @@ export default async function (id) {
   else if (c.status === "in_review") next = a.approve ? (a.blocking_count ? `${a.blocking_count} finding(s) need a person's decision before approval.` : "Read the findings, then approve or request changes.") : "Waiting for a reviewer.";
   else if (c.status === "approved") next = a.publish ? "Approved. A manager can publish now." : "Approved. Waiting for a manager to publish.";
   else next = "Published. Claim passports keep watching the sources.";
-  later(() => { applyFilter(); if (tab === "transparency") loadTransparency(); });
+  later(() => { if (d.files && d.files.page_view) { pdfPage = 1; loadPdf(); } applyFilter(); if (tab === "transparency") loadTransparency(); });
   return h`<div class="row sp" style="align-items:flex-start;margin-bottom:6px"><div><a href="#/content" class="small">${icon("arrow")} All content</a><h1 style="margin-top:6px">${c.title}</h1>
       <div class="row">${statusPill(c.status)}<span class="muted small">${c.fmt} · version ${c.current_version} · ${c.channel} · by ${c.owner_name}</span>${c.ai_assisted ? pill("amber", "AI-assisted") : ""}${c.needs_refresh ? pill("amber", "needs refresh") : ""}</div></div>
-      <div class="row">${pending ? h`<button class="btn teal" data-act="apply">${icon("check")}Apply ${pending} change(s)</button>` : ""}${a.submit ? h`<button class="btn primary" data-act="submit">${icon("send")}Submit for review</button>` : ""}
+      <div class="row">${pending ? h`<button class="btn teal" data-act="apply">${icon("check")}Apply ${pending} change(s)</button>` : ""}${d.files && d.files.export ? h`<button class="btn ghost" data-act="export-docx">${icon("upload")}Download corrected file</button>` : ""}${a.submit ? h`<button class="btn primary" data-act="submit">${icon("send")}Submit for review</button>` : ""}
         ${a.request_changes ? h`<button class="btn ghost" data-act="request-changes">Request changes</button>` : ""}${a.approve ? h`<button class="btn green" data-act="approve">${icon("check")}Approve</button>` : ""}${a.publish ? h`<button class="btn primary" data-act="publish">${icon("globe")}Publish</button>` : ""}</div></div>
     ${stepper(c.status)}
     ${d.proposals.length ? h`<div class="warn" style="margin:14px 0"><b>A fact changed after this was published.</b>${d.proposals.map(p => h`<div style="margin-top:8px">${p.message}<div class="ba"><div class="b">${p.old_text}</div><span>${icon("arrow")}</span><div class="a">${p.new_text}</div></div>
@@ -168,6 +189,7 @@ export default async function (id) {
     <div class="split"><div>
       <div class="card"><div class="card-h"><h2>Content</h2><div class="row right">${c.editable && a.edit ? h`<button class="btn small ghost" data-act="edit-text">${icon("edit")}Edit text</button>` : ""}${a.edit ? h`<button class="btn small ghost" data-act="recheck">${icon("refresh")}Re-check</button>` : ""}<button class="btn small ghost" data-act="copy-text">${icon("copy")}Copy</button></div></div>
         ${!c.editable ? h`<div class="note" style="margin-bottom:10px">This was read from a ${c.fmt} file. Fixes apply to the extracted text below, so you can copy the corrected text back into the original.</div>` : ""}
+        ${d.meta.notice ? h`<div class="note" style="margin-bottom:10px">${d.meta.notice}</div>` : ""}${d.files && d.files.page_view ? h`<div class="card flat" style="margin-bottom:12px"><div id="pdfbox"></div></div>` : ""}
         ${d.meta.warning ? h`<div class="warn" style="margin-bottom:10px">${d.meta.warning}</div>` : ""}
         ${c.fmt === "image" ? h`<div class="small muted" style="margin-bottom:8px">${d.meta.width}x${d.meta.height}px · alt text: ${d.meta.alt_text ? "yes" : "missing"} ${a.edit ? h`<button class="btn small ghost" data-act="alt-text">Add alt text</button>` : ""}
           <div class="row" style="margin-top:8px">${(d.meta.colors || []).map(k => h`<span class="swatch" data-tip="${Math.round(k.share * 100)}% of the image"><i style="background:${k.hex}"></i>${k.hex}</span>`)}</div></div>` : ""}
