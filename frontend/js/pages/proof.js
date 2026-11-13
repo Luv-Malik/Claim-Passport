@@ -4,7 +4,7 @@ import { emptyArt } from "../art.js";
 export default async function () {
   const { contents } = await api("/api/contents?status=published");
   const q = qs(); let cid = Number(q.get("content_id")) || (contents[0] && contents[0].id) || 0;
-  const at = q.get("at") || state.meta.today;
+ const at = q.get("at") || state.meta?.today || new Date().toISOString().slice(0, 10);
   if (!contents.length) return h`<h1>Proof Time Machine</h1><div class="card empty" style="margin-top:16px">${emptyArt}<div><b>Nothing published yet</b></div>Publish approved content to build a proof trail.</div>`;
   const [{ events }, r] = await Promise.all([api(`/api/contents/${cid}/timeline`), api(`/api/proof?content_id=${cid}&at=${at}`)]);
   return h`<div style="margin-bottom:16px"><h1>Proof Time Machine</h1><div class="muted">Pick a published page and a date. See exactly what was live, which approved sources backed it, and who approved it.</div></div>
