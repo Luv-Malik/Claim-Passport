@@ -30,9 +30,16 @@ def tokens(text):
 
 
 class FactIndex:
+    """TF-IDF search over the approved facts. `HybridIndex` (semantic.py) extends it with meaning-level matching
+    by overriding `prep` (text expansion) and `_scores` (adds embedding similarity)."""
+    mode = "tfidf"
+
+    def prep(self, text):
+        return text
+
     def __init__(self, facts):
         self.facts = facts
-        docs = [tokens(f"{f['statement']} {f.get('keywords') or ''} {f.get('category') or ''} {f.get('key') or ''}")
+        docs = [tokens(self.prep(f"{f['statement']} {f.get('keywords') or ''} {f.get('category') or ''} {f.get('key') or ''}"))
                 for f in facts]
         df = Counter()
         for d in docs:
@@ -47,9 +54,12 @@ class FactIndex:
         norm = math.sqrt(sum(x * x for x in v.values())) or 1.0
         return {t: x / norm for t, x in v.items()}
 
+    def _scores(self, text):
+        q = self._vec(tokens(self.prep(text)))
+        return [sum(q.get(t, 0) * w for t, w in vec.items()) for vec in self.vecs]
+
     def search(self, text, k=3):
-        q = self._vec(tokens(text))
-        scored = [(sum(q.get(t, 0) * w for t, w in vec.items()), f) for vec, f in zip(self.vecs, self.facts)]
+        scored = list(zip(self._scores(text), self.facts))
         scored.sort(key=lambda x: -x[0])
         return [(s, f) for s, f in scored[:k] if s >= MIN_SCORE]
 

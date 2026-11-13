@@ -51,28 +51,57 @@ def _read_html(data):
 
 def _read_pdf(data):
     from pypdf import PdfReader
+
+    from . import pdfview
     reader = PdfReader(io.BytesIO(data))
-    parts, spans, pos = [], [], 0
+    parts, spans, pos, ocr_pages, scanned_unread = [], [], 0, [], 0
     for i, page in enumerate(reader.pages, 1):
         t = (page.extract_text() or "").strip()
+        if not t:                                       # a scanned page: read it with OCR when we can
+            if len(ocr_pages) < pdfview.MAX_OCR_PAGES:
+                o = pdfview.ocr_page(data, i)
+                if o:
+                    t = o
+                    ocr_pages.append(i)
+                else:
+                    scanned_unread += 1
+            else:
+                scanned_unread += 1
         spans.append({"page": i, "start": pos, "end": pos + len(t)})
         parts.append(t)
         pos += len(t) + 2
     meta = {"pages": len(reader.pages), "page_spans": spans}
+    if ocr_pages:
+        meta["ocr_pages"] = ocr_pages
+        meta["notice"] = (f"{len(ocr_pages)} page(s) were scanned images and were read with OCR "
+                          "(text recognition). Please check the text for reading mistakes.")
     text = "\n\n".join(parts)
-    if not text.strip():
-        meta["warning"] = "No selectable text found. This may be a scanned PDF (OCR for PDFs is on the roadmap)."
+    if not text.strip() or scanned_unread:
+        meta["warning"] = ("No selectable text was found and OCR could not read it. Install Tesseract on the server (see the README) "
+                           "or upload a text version." if not text.strip() else
+                           f"{scanned_unread} scanned page(s) could not be read (OCR is unavailable or the page limit was reached).")
     return {"fmt": "pdf", "text": text, "meta": meta}
+
+
+def docx_lines(doc):
+    """The text lines of a Word file, in the exact order and form the reader lists them, with where each one lives.
+    export.py uses this same function, so a change found in the text can be written back to the right place."""
+    lines = []
+    for idx, p in enumerate(doc.paragraphs):
+        if p.text.strip():
+            lines.append({"kind": "p", "text": p.text, "para": idx})
+    for ti, table in enumerate(doc.tables):
+        for ri, row in enumerate(table.rows):
+            cells = [c.text.strip() for c in row.cells]
+            lines.append({"kind": "row", "text": " | ".join(cells), "table": ti, "row": ri, "cells": cells})
+    return lines
 
 
 def _read_docx(data):
     from docx import Document
     doc = Document(io.BytesIO(data))
-    lines = [p.text for p in doc.paragraphs if p.text.strip()]
-    for table in doc.tables:
-        for row in table.rows:
-            lines.append(" | ".join(c.text.strip() for c in row.cells))
-    return {"fmt": "docx", "text": "\n".join(lines), "meta": {"paragraphs": len(lines)}}
+    lines = docx_lines(doc)
+    return {"fmt": "docx", "text": "\n".join(l["text"] for l in lines), "meta": {"paragraphs": len(lines)}}
 
 
 def _read_pptx(data):

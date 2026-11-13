@@ -24,6 +24,8 @@ PERMS = {
     "users": {"manager", "admin"},
     "users_edit": {"admin"},
     "insights": {"reviewer", "manager", "admin"},
+    "settings": {"manager", "admin"},               # hybrid switch, scheduler, test alerts
+    "integrations": {"admin"},                      # Slack and webhook addresses (secrets)
 }
 
 

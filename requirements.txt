@@ -3,7 +3,17 @@ PyJWT>=2.7
 pypdf>=5.0
 python-docx>=1.1
 Pillow>=10.0
+# Encryption of uploads and stored secrets (AES-256-GCM)
+cryptography>=42.0
 # Optional: reads text inside images (needs the Tesseract program installed on the machine)
 pytesseract>=0.3.10
 # Production server
 gunicorn>=22.0
+# Round 3
+# PostgreSQL driver (only needed when CP_DATABASE_URL is set)
+psycopg[binary]>=3.1
+# Logo check on images
+numpy>=1.26
+opencv-python-headless>=4.9
+# Optional, large download: real sentence embeddings for the meaning layer (falls back to the concept lexicon without it)
+# sentence-transformers>=3.0

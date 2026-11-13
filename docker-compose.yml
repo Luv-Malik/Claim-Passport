@@ -6,6 +6,20 @@ services:
       CP_SECRET_KEY: "${CP_SECRET_KEY:-change-me-to-a-long-random-string}"
       CP_SEED_DEMO: "${CP_SEED_DEMO:-1}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      CP_DATABASE_URL: "${CP_DATABASE_URL:-}"          # e.g. postgresql://cp:cp@db:5432/claimpassport (use: docker compose --profile pg up)
+      CP_ENCRYPTION_KEY: "${CP_ENCRYPTION_KEY:-}"
+      CP_SMTP_HOST: "${CP_SMTP_HOST:-}"
+      CP_SMTP_PORT: "${CP_SMTP_PORT:-587}"
+      CP_SMTP_USER: "${CP_SMTP_USER:-}"
+      CP_SMTP_PASSWORD: "${CP_SMTP_PASSWORD:-}"
+      CP_SMTP_FROM: "${CP_SMTP_FROM:-}"
+      CP_PUBLIC_URL: "${CP_PUBLIC_URL:-}"
     volumes: ["cp-data:/data"]
+  db:
+    profiles: ["pg"]
+    image: postgres:16
+    environment: {POSTGRES_USER: cp, POSTGRES_PASSWORD: cp, POSTGRES_DB: claimpassport}
+    volumes: ["pg-data:/var/lib/postgresql/data"]
 volumes:
   cp-data:
+  pg-data:

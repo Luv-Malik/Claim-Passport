@@ -1,4 +1,4 @@
-.PHONY: run test assets demo-change reset
+.PHONY: benchmark run test assets demo-change reset
 run:            ## start the app at http://127.0.0.1:5000
 	python run.py
 test:           ## run all automated tests
@@ -9,3 +9,5 @@ demo-change:    ## simulate a price change (needs the app running)
 	python scripts/demo_source_change.py
 reset:          ## delete the local database and uploads (demo data comes back on next start)
 	rm -f data/claimpassport.db && rm -rf data/uploads
+benchmark:      ## measure claim checking on the labelled set (add --save to show it in the Accuracy Lab page)
+	python -m claimpassport.accuracy --errors
