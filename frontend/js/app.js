@@ -7,6 +7,7 @@ const ROUTES = [
   [/^#\/passports/, () => import("./pages/passports.js")], [/^#\/inbox/, () => import("./pages/inbox.js")],
   [/^#\/vault/, () => import("./pages/vault.js")], [/^#\/insights/, () => import("./pages/insights.js")],
   [/^#\/proof/, () => import("./pages/proof.js")], [/^#\/feed/, () => import("./pages/feed.js")], [/^#\/audit/, () => import("./pages/audit.js")],
+  [/^#\/accuracy/, () => import("./pages/accuracy.js")], [/^#\/settings/, () => import("./pages/settings.js")],
 ];
 
 function applyTheme() {
@@ -34,7 +35,8 @@ function navLinks() {
     ["Trust", [["#/passports", "Claim Passports", "shield"], ["#/inbox", "Alerts", "inbox"], ["#/feed", "Truth Feed", "globe"]]],
     ["Brand", [["#/vault", "Brand Vault", "book"]]],
   ];
-  if (u.role !== "creator") groups[2][1].push(["#/insights", "Insights", "chart"], ["#/proof", "Proof Time Machine", "history"]);
+  if (u.role !== "creator") groups[2][1].push(["#/insights", "Insights", "chart"], ["#/proof", "Proof Time Machine", "history"], ["#/accuracy", "Accuracy Lab", "check"]);
+  groups.push(["Account", [["#/settings", "Settings", "bell"]]]);
   if (isManager()) groups.push(["Admin", [["#/audit", "Audit and AI log", "activity"]]]);
   return groups;
 }

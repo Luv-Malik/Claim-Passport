@@ -1,13 +1,15 @@
 """HTTP API (Flask). Routes are thin: the real logic lives in the other modules."""
 import functools
+import mimetypes
 import time
-import uuid
 from collections import defaultdict
 from pathlib import Path
 
 from flask import Flask, g, jsonify, request, send_from_directory
 
-from . import __version__, audit, clock, ingest, insights, passports, security, vault, watcher, workflow
+from . import (__version__, accuracy, audit, clock, export, ingest, insights, logo, notifier, passports, pdfview,
+               security, settings, storage, vault, watcher, workflow)
+from .scheduler import Scheduler
 from . import seed as seedmod
 from .config import BASE_DIR, load_config
 from .db import DB, jload
@@ -21,7 +23,7 @@ def create_app(overrides=None):
     cfg = load_config(overrides)
     app = Flask(__name__, static_folder=None)
     app.config["MAX_CONTENT_LENGTH"] = cfg["MAX_UPLOAD_MB"] * 1024 * 1024
-    db = DB(cfg["DB_PATH"])
+    db = DB(cfg["DATABASE_URL"] or cfg["DB_PATH"], cfg.get("DB_DRIVER"))
     db.init()
     vault.ensure_builtin_rules(db)
     if not db.one("SELECT id FROM users LIMIT 1"):
@@ -30,7 +32,10 @@ def create_app(overrides=None):
         else:
             seedmod.bootstrap_admin(db)
     llm = LLMClient(cfg)
-    app.cp_db, app.cp_cfg = db, cfg
+    scheduler = Scheduler(db, cfg, sync=bool(cfg.get("SCHEDULER_SYNC")))
+    if cfg["SCHEDULER"] and not cfg.get("SCHEDULER_SYNC"):
+        scheduler.start()
+    app.cp_db, app.cp_cfg, app.cp_scheduler = db, cfg, scheduler
     failures = defaultdict(list)          # tiny login throttle: 10 failures per 5 minutes per address
 
     # ------------------------------------------------------------ helpers
@@ -81,10 +86,7 @@ def create_app(overrides=None):
         return d
 
     def save_upload(filename, data):
-        Path(cfg["UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
-        stored = f"{uuid.uuid4().hex}{Path(filename).suffix.lower()}"
-        (Path(cfg["UPLOAD_DIR"]) / stored).write_bytes(data)
-        return stored
+        return storage.save_upload(cfg, filename, data)        # encrypted at rest
 
     # ------------------------------------------------------------ errors and headers
     @app.errorhandler(AppError)
@@ -127,6 +129,7 @@ def create_app(overrides=None):
         demo = bool(db.one("SELECT id FROM users WHERE email='admin@demo.cp'"))
         return jsonify(version=__version__, demo_login=demo, llm_enabled=llm.available, llm_model=llm.model if llm.available else None,
                        roles=list(security.ROLES), today=clock.today().isoformat(), categories=list(vault.CATEGORIES),
+                       database=db.kind, hybrid=settings.hybrid_enabled(db, cfg),
                        disclosure=("Checks run with a rules engine inside this server. An optional AI model may suggest rewrites; "
                                    "it never decides. People approve everything before it is published."))
 
@@ -206,6 +209,8 @@ def create_app(overrides=None):
         b = body()
         before, after = vault.update_fact(db, fid, b, g.user, b.get("note", ""))
         proposals = watcher.on_fact_changed(db, before, after, g.user)
+        if after["version"] > before["version"]:
+            scheduler.kick("fact_change")        # alerts go out right away, without slowing this request
         return jsonify(fact=after, version_changed=after["version"] > before["version"], proposals_created=len(proposals))
 
     @app.get("/api/vault/facts/<int:fid>/history")
@@ -248,7 +253,11 @@ def create_app(overrides=None):
     @app.get("/api/vault/assets")
     @need()
     def assets():
-        return jsonify(assets=vault.list_assets(db))
+        out = vault.list_assets(db)
+        for a in out:
+            if a["name"] == "logo" and isinstance(a["value"], dict):       # never send the image data in a list
+                a["value"] = {k: v for k, v in a["value"].items() if k != "png_b64"} | {"has_image": bool(a["value"].get("png_b64"))}
+        return jsonify(assets=out)
 
     @app.put("/api/vault/assets/<name>")
     @need("vault_edit")
@@ -322,8 +331,12 @@ def create_app(overrides=None):
             findings.append(d)
         meta = {k: val for k, val in v["meta"].items() if k not in ("page_spans", "stored_as")}
         pub = db.one("SELECT id, version, published_at FROM publications WHERE content_id=? AND active=1", (cid,))
+        stored = v["meta"].get("stored_as")
+        files = {"original": bool(stored), "page_view": c["fmt"] == "pdf" and bool(stored) and pdfview.tools_available()["poppler"],
+                 "pages": v["meta"].get("pages"), "export": c["fmt"] in export.FORMATS and bool(stored),
+                 "ocr_pages": v["meta"].get("ocr_pages") or []}
         return jsonify(
-            content={**c, "editable": c["fmt"] in ingest.EDITABLE}, text=v["text"], meta=meta,
+            content={**c, "editable": c["fmt"] in ingest.EDITABLE}, text=v["text"], meta=meta, files=files,
             summary=(v["analysis"] or {}).get("summary", {}), findings=findings,
             comments=workflow.list_comments(db, cid),
             versions=db.q("SELECT v.version, v.note, v.created_at, u.name AS author FROM content_versions v "
@@ -518,6 +531,190 @@ def create_app(overrides=None):
     def audit_view():
         return jsonify(audit=db.q("SELECT * FROM audit_log ORDER BY id DESC LIMIT 200"),
                        ai=db.q("SELECT * FROM ai_log ORDER BY id DESC LIMIT 100"))
+
+    # ------------------------------------------------------------ original files, PDF page view, corrected export
+    def original_bytes(c):
+        v = workflow.current_version(db, c)
+        data = storage.load_upload(cfg, v["meta"].get("stored_as"))
+        if data is None:
+            raise AppError("The original file is not available for this content.", 404)
+        return v, data
+
+    @app.get("/api/contents/<int:cid>/original")
+    @need()
+    def content_original(cid):
+        c = visible_content(cid)
+        _, data = original_bytes(c)
+        name = (c["filename"] or f"content-{cid}").replace('"', "")
+        return data, 200, {"Content-Type": mimetypes.guess_type(name)[0] or "application/octet-stream",
+                           "Content-Disposition": f'attachment; filename="{name}"'}
+
+    @app.get("/api/contents/<int:cid>/pages")
+    @need()
+    def pdf_pages(cid):
+        c = visible_content(cid)
+        if c["fmt"] != "pdf":
+            raise AppError("Page view is for PDF files.", 400)
+        v, data = original_bytes(c)
+        v1 = db.one("SELECT text FROM content_versions WHERE content_id=? AND version=1", (cid,))
+        located = pdfview.locate(workflow.findings_for(db, cid, c["current_version"]), v["text"], v1["text"], v["meta"].get("page_spans"))
+        per_page = {}
+        for loc in located.values():
+            per_page[loc["page"]] = per_page.get(loc["page"], 0) + 1
+        return jsonify(pages=pdfview.page_count(data), findings_per_page=per_page, ocr_pages=v["meta"].get("ocr_pages") or [],
+                       tools=pdfview.tools_available())
+
+    @app.get("/api/contents/<int:cid>/pages/<int:page>")
+    @need()
+    def pdf_page(cid, page):
+        c = visible_content(cid)
+        if c["fmt"] != "pdf":
+            raise AppError("Page view is for PDF files.", 400)
+        v, data = original_bytes(c)
+        n = pdfview.page_count(data)
+        if page < 1 or page > n:
+            raise AppError("That page does not exist.", 404)
+        v1 = db.one("SELECT text FROM content_versions WHERE content_id=? AND version=1", (cid,))
+        findings = workflow.findings_for(db, cid, c["current_version"])
+        located = pdfview.locate(findings, v["text"], v1["text"], v["meta"].get("page_spans"))
+        try:
+            res = pdfview.render_page(data, page, findings, located, page in (v["meta"].get("ocr_pages") or []))
+        except RuntimeError as exc:
+            raise AppError(str(exc), 501)
+        res.update(pages=n, findings_here=sum(1 for loc in located.values() if loc["page"] == page))
+        return jsonify(res)
+
+    def export_for(cid):
+        c = visible_content(cid)
+        if c["fmt"] not in export.FORMATS:
+            raise AppError("Corrected-file export works for Word (.docx) and PowerPoint (.pptx) files.", 415)
+        v, data = original_bytes(c)
+        blob, report = export.export_corrected(c["fmt"], data, v["text"])
+        return c, blob, report
+
+    @app.get("/api/contents/<int:cid>/export/report")
+    @need()
+    def export_report(cid):
+        _, _, report = export_for(cid)
+        return jsonify(report)
+
+    @app.get("/api/contents/<int:cid>/export")
+    @need()
+    def export_file(cid):
+        c, blob, report = export_for(cid)
+        stem, ext = (c["filename"] or f"content-{cid}.{c['fmt']}").rsplit(".", 1) if "." in (c["filename"] or "") else (f"content-{cid}", c["fmt"])
+        audit.log(db, g.user["name"], "content.export", "content", cid, {"applied": len(report["applied"]), "skipped": len(report["skipped"])})
+        return blob, 200, {"Content-Type": export.FORMATS[c["fmt"]],
+                           "Content-Disposition": f'attachment; filename="{stem.replace(chr(34), "")}-corrected.{ext}"',
+                           "X-Export-Applied": str(len(report["applied"])), "X-Export-Skipped": str(len(report["skipped"]))}
+
+    # ------------------------------------------------------------ brand logo (Vault asset)
+    @app.post("/api/vault/logo")
+    @need("vault_edit")
+    def logo_upload():
+        f = request.files.get("file")
+        if not f or not f.filename:
+            raise AppError("Please choose a logo image (PNG, JPG or WebP).")
+        try:
+            value = logo.make_asset(f.read(), f.filename)
+        except ValueError as exc:
+            raise AppError(str(exc))
+        except Exception:
+            raise AppError("That file could not be read as an image.", 422)
+        vault.set_asset(db, "logo", value, g.user, kind="image", notes="Approved logo used by the logo check (V-4)")
+        return jsonify(ok=True, width=value["width"], height=value["height"])
+
+    @app.get("/api/vault/logo")
+    @need()
+    def logo_get():
+        a = vault.get_asset(db, "logo", None)
+        if not a or not a.get("png_b64"):
+            raise AppError("No logo has been uploaded yet.", 404)
+        return logo.logo_bytes(a), 200, {"Content-Type": "image/png"}
+
+    @app.delete("/api/vault/logo")
+    @need("vault_edit")
+    def logo_delete():
+        db.run("DELETE FROM assets WHERE name='logo'")
+        audit.log(db, g.user["name"], "asset.delete", "asset", None, {"name": "logo"})
+        return jsonify(ok=True)
+
+    # ------------------------------------------------------------ settings, alerts and scheduler
+    def settings_view():
+        st = notifier.channel_status(db, cfg)
+        out = {"hybrid": {"enabled": settings.hybrid_enabled(db, cfg), "install_default": bool(cfg["HYBRID"]),
+                          "embeddings_installed": __import__("claimpassport.engine.semantic", fromlist=["x"]).embeddings_installed(),
+                          "ai_judge_available": llm.available},
+               "channels": st, "email_from": cfg["SMTP_FROM"] if st["email"] else None,
+               "prefs": notifier.get_prefs(db, g.user["id"]), "database": db.kind,
+               "can": {"hybrid": security.can(g.user["role"], "settings"), "integrations": security.can(g.user["role"], "integrations")}}
+        if security.can(g.user["role"], "settings"):
+            out["scheduler"] = scheduler.status()
+        return out
+
+    @app.get("/api/settings")
+    @need()
+    def settings_get():
+        return jsonify(settings_view())
+
+    @app.put("/api/settings")
+    @need()
+    def settings_put():
+        b = body()
+        changed = []
+        if "hybrid" in b:
+            if not security.can(g.user["role"], "settings"):
+                raise AppError("Only a manager or admin can change verification mode.", 403)
+            settings.put(db, "hybrid_mode", "1" if b["hybrid"] else "0", g.user["name"])
+            changed.append("hybrid")
+        for key in ("slack_webhook_url", "webhook_url", "webhook_secret"):
+            if key in b:
+                if not security.can(g.user["role"], "integrations"):
+                    raise AppError("Only an admin can change Slack and webhook settings.", 403)
+                val = (b[key] or "").strip()
+                if val and key.endswith("_url"):
+                    notifier.check_url(val)
+                settings.put_secret(db, cfg, key, val, g.user["name"])
+                changed.append(key)
+        audit.log(db, g.user["name"], "settings.update", "system", None, {"changed": changed})
+        return jsonify(settings_view())
+
+    @app.put("/api/notification-prefs")
+    @need()
+    def prefs_put():
+        prefs = notifier.set_prefs(db, g.user["id"], body())
+        audit.log(db, g.user["name"], "prefs.update", "user", g.user["id"], prefs)
+        return jsonify(prefs=prefs)
+
+    @app.post("/api/settings/test-alert")
+    @need("settings")
+    def settings_test_alert():
+        return jsonify(results=notifier.send_test(db, cfg, g.user))
+
+    @app.get("/api/scheduler")
+    @need("watcher")
+    def scheduler_status():
+        return jsonify(**scheduler.status(), deliveries=db.q("SELECT * FROM alert_deliveries ORDER BY id DESC LIMIT 30"))
+
+    @app.post("/api/scheduler/run")
+    @need("watcher")
+    def scheduler_run():
+        return jsonify(run=scheduler.run_job("manual"))
+
+    # ------------------------------------------------------------ accuracy lab
+    @app.get("/api/accuracy/latest")
+    @need("insights")
+    def accuracy_latest():
+        return jsonify(run=accuracy.latest_run(db), can_run=security.can(g.user["role"], "watcher"),
+                       ai_judge_available=llm.available)
+
+    @app.post("/api/accuracy/run")
+    @need("watcher")
+    def accuracy_run():
+        result = accuracy.run_benchmark(cfg, ("rules", "hybrid", "hybrid+ai"), llm=llm)
+        accuracy.save_run(db, result, g.user["name"])
+        audit.log(db, g.user["name"], "accuracy.run", "system", None, {"sentences": result["dataset"]["size"]})
+        return jsonify(run=accuracy.latest_run(db))
 
     # ------------------------------------------------------------ frontend
     front = BASE_DIR / "frontend"

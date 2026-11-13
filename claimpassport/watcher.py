@@ -16,6 +16,10 @@ def notify(db, user_id, message, ref="", link=""):
     if ref and db.one("SELECT id FROM notifications WHERE user_id=? AND ref=?", (user_id, ref)):
         return
     db.insert("notifications", {"user_id": user_id, "message": message, "ref": ref, "link": link, "created_at": clock.now()})
+    # The in-app notice above is always created at once. This queues the same alert for email, Slack and webhook;
+    # the scheduler sends it (see notifier.py), so a slow mail server never slows down a request.
+    db.insert("alert_queue", {"user_id": user_id, "message": message, "link": link, "ref": ref, "kind": "alert",
+                              "status": "pending", "created_at": clock.now()})
 
 
 def on_fact_changed(db, before, after, actor):

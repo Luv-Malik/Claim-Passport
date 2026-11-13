@@ -65,6 +65,13 @@ BUILTIN_RULES = [
          guideline_ref="Brand Guidelines v3, section 6.2 (Numbers)"),
     dict(code="C-5", category="claims", title="Comparisons with other brands need Legal review", severity="high",
          kind="claim", human_lock=1, guideline_ref="Brand Guidelines v3, section 6.4 (Comparisons)"),
+    dict(code="C-6", category="claims", title="Wording must not go beyond or against an approved fact (meaning check)",
+         severity="high", kind="claim", guideline_ref="Brand Guidelines v3, section 6.2 (Numbers) and 6.1 (Claims)",
+         description="Found by hybrid verification: claims written in other words, such as 'our help desk never sleeps' "
+                     "or 'millions of users', checked against the approved facts."),
+    dict(code="V-4", category="visual", title="The approved logo must be present, large enough and not at the edge",
+         severity="medium", kind="builtin", guideline_ref="Brand Guidelines v3, section 4.4 (Logo)",
+         config={"check": "logo"}, description="Image uploads are searched for the approved logo (Vault > Assets)."),
 ]
 
 DEFAULT_ASSETS = {

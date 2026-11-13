@@ -2,9 +2,11 @@
 
 Steps: find claims -> verify against approved facts -> run rule checkers -> add reasons, sources,
 confidence and human-lock flags -> (optional) AI rewrite ideas. Nothing here changes the content."""
-from .. import clock, vault
+from .. import clock, settings, vault
 from . import checkers as K
 from . import claims as C
+from . import judge as J
+from . import semantic as SEM
 from . import suggest as S
 from . import verify as V
 from .text_utils import mask_html, reading_ease, sentences, words
@@ -77,11 +79,16 @@ def _claim_findings(c, res, today):
     return out, info
 
 
-def analyze(db, text, fmt, meta=None, cfg=None, llm=None, today=None):
+def analyze(db, text, fmt, meta=None, cfg=None, llm=None, today=None, hybrid=None, claims_only=False):
+    """`hybrid` forces the verification mode (None = the saved admin choice). `claims_only` skips the tone,
+    accessibility and visual checks; the Accuracy Lab uses it to measure claim checking alone."""
     meta = meta or {}
+    cfg = cfg or {}
     today = today or clock.today()
     rules, facts = vault.rules_by_code(db), vault.list_facts(db)
-    index = V.FactIndex(facts)
+    hybrid = settings.hybrid_enabled(db, cfg) if hybrid is None else bool(hybrid)
+    concepts = vault.get_asset(db, "concepts", []) if hybrid else []
+    index = SEM.build_index(facts, hybrid, cfg, concepts)
     visible = mask_html(text) if fmt == "html" else text
     ctx = K.Ctx(text, visible, fmt, meta, rules, vault.list_glossary(db),
                 vault.get_asset(db, "palette", []), vault.get_asset(db, "fonts", []), vault.get_asset(db, "image_rules", {}))
@@ -90,15 +97,23 @@ def analyze(db, text, fmt, meta=None, cfg=None, llm=None, today=None):
         found, info = _claim_findings(c, V.verify_claim(c, index, facts, today), today)
         raw.extend(found)
         claim_info.append(info)
-    raw.extend(K.run_all(ctx))
+    if hybrid:       # claims written in other words ("our help desk never sleeps", "millions of users")
+        raw.extend(SEM.implied_findings(visible, index, facts, today, [r["span"] for r in raw], concepts))
+    logo_info = None
+    if not claims_only:
+        raw.extend(K.run_all(ctx))
+        if fmt == "image" and rules.get("V-4", {}).get("active"):
+            logo_info, logo_raw = _logo_check(db, cfg, meta, rules["V-4"])
+            raw.extend(logo_raw)
 
     findings, seen = [], set()
-    for r in raw:
+
+    def build(r):
         rule = rules.get(r["rule_code"]) or {"category": "general", "severity": "medium", "guideline_ref": "", "human_lock": 0}
         s, e = r["span"]
-        if (r["rule_code"], s, e) in seen:
-            continue
-        seen.add((r["rule_code"], s, e))
+        if (r["rule_code"], s, e, r["message"]) in seen:
+            return None
+        seen.add((r["rule_code"], s, e, r["message"]))
         fact = r.get("fact")
         label = confidence_label(r["confidence"])
         lock = bool(rule.get("human_lock")) or bool(r.get("force_lock")) or bool(
@@ -108,17 +123,33 @@ def analyze(db, text, fmt, meta=None, cfg=None, llm=None, today=None):
             src = ("fact", fact["id"], ref, int(fact["confidential"]))
         else:
             src = ("guideline", None, f'{rule.get("guideline_ref", "")} [{r["rule_code"]}]'.strip(), 0)
-        findings.append({
+        produced = "rules+ai-judge" if r.get("ai") else ("semantic" if r["rule_code"] == "C-6" else "rules")
+        return {
             "rule_code": r["rule_code"], "category": rule["category"], "severity": r.get("severity") or rule["severity"],
             "span_start": s, "span_end": e, "excerpt": text[s:e], "message": r["message"],
             "source_type": src[0], "source_id": src[1], "source_ref": src[2], "source_confidential": src[3],
             "confidence": label, "confidence_score": round(r["confidence"], 2), "suggestions": r["suggestions"],
-            "needs_human": 1 if (lock or label == "low") else 0, "human_lock": 1 if lock else 0, "produced_by": "rules",
-            "_fact": fact})
+            "needs_human": 1 if (lock or label == "low") else 0, "human_lock": 1 if lock else 0, "produced_by": produced,
+            "_fact": fact}
+
+    findings = [f for f in (build(r) for r in raw) if f]
     findings.sort(key=lambda f: (f["span_start"], f["span_end"]))
 
     events = [{"step": "analysis", "engine": "rules-engine", "model": "local",
                "data_sent": "Nothing leaves your server. Checks run inside the application.", "masked": 0}]
+    if hybrid:
+        events.append({"step": "hybrid-search", "engine": index.mode, "model": "local",
+                       "data_sent": "Nothing leaves your server. Meaning-level matching runs inside the application.", "masked": 0})
+    judged = False
+    if hybrid and llm is not None and getattr(llm, "available", False) and hasattr(llm, "judge"):
+        extra_raw, notes, jev = J.run(llm, facts, findings, claim_info, visible, sentences(visible), today)
+        for i, note in notes.items():
+            findings[i]["suggestions"].append(note)
+            findings[i]["produced_by"] = "rules+ai-judge"
+        findings.extend(f for f in (build(r) for r in extra_raw) if f)
+        findings.sort(key=lambda f: (f["span_start"], f["span_end"]))
+        events.extend(jev)
+        judged = bool(jev)
     if llm is not None and getattr(llm, "available", False):
         sents = sentences(visible)
         picked, masked_total = 0, 0
@@ -157,5 +188,21 @@ def analyze(db, text, fmt, meta=None, cfg=None, llm=None, today=None):
         "words": len(words(visible)), "reading_ease": reading_ease(visible),
         "claims_total": len(claim_info),
         "claims_clean": sum(1 for c in claim_info if c["supports"] and not c["issues"]),
+        "verification": {"hybrid": hybrid, "mode": index.mode, "ai_judge": judged},
     }
+    if logo_info is not None:
+        summary["logo"] = logo_info
     return {"findings": findings, "summary": summary, "claims": claim_info, "ai_events": events}
+
+
+def _logo_check(db, cfg, meta, rule):
+    """Image uploads: look for the approved logo (Vault > Assets > logo). Returns (info, raw findings)."""
+    from .. import logo as LG, storage
+    asset = vault.get_asset(db, "logo", None)
+    if not asset or not asset.get("png_b64"):
+        return {"status": "not_run", "reason": "No approved logo has been uploaded to the Brand Vault yet."}, []
+    data = storage.load_upload(cfg, meta.get("stored_as")) if cfg.get("UPLOAD_DIR") else None
+    if not data:
+        return {"status": "not_run", "reason": "The original image file is not available."}, []
+    res = LG.check(data, LG.logo_bytes(asset), vault.get_asset(db, "image_rules", {}) or {})
+    return res, LG.raw_findings(res, S)

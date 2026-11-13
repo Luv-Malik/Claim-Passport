@@ -1,0 +1,1338 @@
+{
+ "name": "Lumio Invoice claims set",
+ "version": 1,
+ "size": 174,
+ "scope": "Claims rules C-1 to C-6. A sentence is correct when the set of claim rules the checker reports equals the expected set.",
+ "how_labelled": "Written by Team Synqora for the demo brand. For each sentence we wrote what a correct checker SHOULD report, judging from the approved facts of the demo brand (see approved_facts.json plus one expired fact, legacy_plan), before running the benchmark. We only changed a label afterwards when we found we had labelled it wrongly.",
+ "limits": "Small, one brand, English only, written by the people who built the checker. The numbers show how the modes compare on THIS set; they are not a promise about other brands or real content. Some items are deliberately hard paraphrases that no mode is expected to catch.",
+ "extra_facts": [
+  {
+   "key": "legacy_plan",
+   "statement": "The Legacy plan costs Rs. 299 per month.",
+   "value": "Rs. 299",
+   "category": "pricing",
+   "source_doc": "Pricing sheet v3",
+   "source_ref": "Legacy row",
+   "owner": "Pricing team",
+   "review_interval_days": 30,
+   "keywords": "legacy old plan price cost",
+   "days_since_verified": 80,
+   "expires_in_days": -20
+  }
+ ],
+ "items": [
+  {
+   "id": 1,
+   "type": "number_correct",
+   "text": "Lumio Invoice is trusted by 10,000+ customers.",
+   "expected": []
+  },
+  {
+   "id": 2,
+   "type": "number_correct",
+   "text": "Over 5,000 businesses use Lumio Invoice every day.",
+   "expected": []
+  },
+  {
+   "id": 3,
+   "type": "number_correct",
+   "text": "The Starter plan costs Rs. 499 per month.",
+   "expected": []
+  },
+  {
+   "id": 4,
+   "type": "number_correct",
+   "text": "The Pro plan is Rs. 1,299 per month.",
+   "expected": []
+  },
+  {
+   "id": 5,
+   "type": "number_correct",
+   "text": "Try Lumio free for 14 days, no card needed.",
+   "expected": []
+  },
+  {
+   "id": 6,
+   "type": "number_correct",
+   "text": "Our service agreement includes a 99.9% uptime commitment.",
+   "expected": []
+  },
+  {
+   "id": 7,
+   "type": "number_correct",
+   "text": "Annual plans get 20% off until 31 Dec 2026.",
+   "expected": []
+  },
+  {
+   "id": 8,
+   "type": "number_correct",
+   "text": "Save 20% when you choose an annual plan.",
+   "expected": []
+  },
+  {
+   "id": 9,
+   "type": "number_correct",
+   "text": "More than 8,000 customers already invoice with Lumio.",
+   "expected": []
+  },
+  {
+   "id": 10,
+   "type": "number_correct",
+   "text": "Pro costs Rs. 1,299 each month.",
+   "expected": []
+  },
+  {
+   "id": 11,
+   "type": "number_correct",
+   "text": "Start on the Starter plan for Rs. 499 a month.",
+   "expected": []
+  },
+  {
+   "id": 12,
+   "type": "number_correct",
+   "text": "Every new account gets a 14-day free trial.",
+   "expected": []
+  },
+  {
+   "id": 13,
+   "type": "number_correct",
+   "text": "Lumio Invoice is ISO 27001 certified.",
+   "expected": []
+  },
+  {
+   "id": 14,
+   "type": "number_correct",
+   "text": "We are certified to ISO 27001.",
+   "expected": []
+  },
+  {
+   "id": 15,
+   "type": "number_correct",
+   "text": "Lumio Invoice serves more than 6,000 businesses.",
+   "expected": []
+  },
+  {
+   "id": 16,
+   "type": "number_correct",
+   "text": "The Starter plan is just Rs. 499/month.",
+   "expected": []
+  },
+  {
+   "id": 17,
+   "type": "number_correct",
+   "text": "Get 14 days of Lumio Invoice free.",
+   "expected": []
+  },
+  {
+   "id": 18,
+   "type": "number_correct",
+   "text": "A 14-day free trial is included with every new account.",
+   "expected": []
+  },
+  {
+   "id": 19,
+   "type": "number_correct",
+   "text": "You can pay Rs. 499 per month on Starter.",
+   "expected": []
+  },
+  {
+   "id": 20,
+   "type": "number_correct",
+   "text": "Annual billing saves you 20%.",
+   "expected": []
+  },
+  {
+   "id": 21,
+   "type": "number_wrong",
+   "text": "Lumio Invoice is used by 25,000+ customers.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 22,
+   "type": "number_wrong",
+   "text": "The Starter plan costs Rs. 599 per month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 23,
+   "type": "number_wrong",
+   "text": "The Pro plan costs Rs. 999 per month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 24,
+   "type": "number_wrong",
+   "text": "Every new account gets a 30-day free trial.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 25,
+   "type": "number_wrong",
+   "text": "Annual plans get 30% off until 31 Dec 2026.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 26,
+   "type": "number_wrong",
+   "text": "Join 50,000 customers who trust Lumio Invoice.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 27,
+   "type": "number_wrong",
+   "text": "Starter is only Rs. 399 per month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 28,
+   "type": "number_wrong",
+   "text": "Pro is Rs. 1,499 per month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 29,
+   "type": "number_wrong",
+   "text": "Try Lumio free for 21 days.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 30,
+   "type": "number_wrong",
+   "text": "Our uptime commitment is 99.99%.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 31,
+   "type": "number_wrong",
+   "text": "Enjoy 25% off on every annual plan.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 32,
+   "type": "number_wrong",
+   "text": "More than 20,000 businesses use Lumio.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 33,
+   "type": "number_wrong",
+   "text": "The Starter plan is Rs. 549 a month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 34,
+   "type": "number_wrong",
+   "text": "Get a 7-day free trial.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 35,
+   "type": "number_wrong",
+   "text": "Lumio Invoice has a 99% uptime commitment.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 36,
+   "type": "number_wrong",
+   "text": "Our Pro plan costs Rs. 1,099 per month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 37,
+   "type": "number_wrong",
+   "text": "Annual plans are 15% off.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 38,
+   "type": "number_wrong_paraphrase",
+   "text": "25,000 clients trust Lumio Invoice.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 39,
+   "type": "number_wrong_paraphrase",
+   "text": "Lumio is relied on by 40,000 users worldwide.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 40,
+   "type": "number_wrong_paraphrase",
+   "text": "Our user base has grown to 100,000.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 41,
+   "type": "number_wrong_paraphrase",
+   "text": "More than 30,000 companies choose Lumio.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 42,
+   "type": "number_wrong_paraphrase",
+   "text": "Over 70,000 firms rely on us.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 43,
+   "type": "number_wrong_paraphrase",
+   "text": "What you pay each month on Starter: Rs. 699.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 44,
+   "type": "number_wrong_paraphrase",
+   "text": "The cost of the entry-level plan is Rs. 799 per month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 45,
+   "type": "number_wrong_paraphrase",
+   "text": "Sign up and use Lumio for 45 days before paying.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 46,
+   "type": "number_wrong_paraphrase",
+   "text": "Our premium plan is Rs. 1,999 each month.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 47,
+   "type": "number_wrong_paraphrase",
+   "text": "Save 35% by paying yearly.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 48,
+   "type": "number_wrong_paraphrase",
+   "text": "Save 15% when you pay for a year up front.",
+   "expected": [
+    "C-2"
+   ]
+  },
+  {
+   "id": 49,
+   "type": "number_unsourced",
+   "text": "Our API handles 2 million requests per day.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 50,
+   "type": "number_unsourced",
+   "text": "Lumio has 45 employees in Pune.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 51,
+   "type": "number_unsourced",
+   "text": "We process invoices worth Rs. 500 crore every year.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 52,
+   "type": "number_unsourced",
+   "text": "Customers save 12 hours a month on invoicing.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 53,
+   "type": "number_unsourced",
+   "text": "Lumio sends 3 million reminders every month.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 54,
+   "type": "number_unsourced",
+   "text": "Our reports load in under 200 milliseconds.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 55,
+   "type": "number_unsourced",
+   "text": "Rated 4.8 out of 5 by 2,300 reviewers.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 56,
+   "type": "number_unsourced",
+   "text": "Over 1,200 integrations are available.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 57,
+   "type": "number_unsourced",
+   "text": "Q3 revenue grew 40%.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 58,
+   "type": "number_unsourced",
+   "text": "We saved clients Rs. 2 crore in late fees.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 59,
+   "type": "number_unsourced",
+   "text": "Lumio has paid out 800 bonuses to staff this year.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 60,
+   "type": "number_unsourced",
+   "text": "Reminders reach inboxes 98% of the time.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 61,
+   "type": "noise_not_a_claim",
+   "text": "Founded in 2019 by two engineers.",
+   "expected": []
+  },
+  {
+   "id": 62,
+   "type": "noise_not_a_claim",
+   "text": "Read the v2.1 release notes.",
+   "expected": []
+  },
+  {
+   "id": 63,
+   "type": "noise_not_a_claim",
+   "text": "Join our webinar on 12 December 2026.",
+   "expected": []
+  },
+  {
+   "id": 64,
+   "type": "noise_not_a_claim",
+   "text": "We are open 9am to 7pm on weekdays.",
+   "expected": []
+  },
+  {
+   "id": 65,
+   "type": "noise_not_a_claim",
+   "text": "Welcome to Lumio Invoice.",
+   "expected": []
+  },
+  {
+   "id": 66,
+   "type": "noise_not_a_claim",
+   "text": "Send your first invoice in minutes.",
+   "expected": []
+  },
+  {
+   "id": 67,
+   "type": "noise_not_a_claim",
+   "text": "Invoicing made simple.",
+   "expected": []
+  },
+  {
+   "id": 68,
+   "type": "noise_not_a_claim",
+   "text": "Questions? Write to us.",
+   "expected": []
+  },
+  {
+   "id": 69,
+   "type": "noise_not_a_claim",
+   "text": "Call us on 9876543210.",
+   "expected": []
+  },
+  {
+   "id": 70,
+   "type": "noise_not_a_claim",
+   "text": "See page 4 of the guide.",
+   "expected": []
+  },
+  {
+   "id": 71,
+   "type": "noise_not_a_claim",
+   "text": "Chapter 2 explains reminders.",
+   "expected": []
+  },
+  {
+   "id": 72,
+   "type": "noise_not_a_claim",
+   "text": "Our summit is on 5 March 2027.",
+   "expected": []
+  },
+  {
+   "id": 73,
+   "type": "noise_not_a_claim",
+   "text": "Check section 3.1 of the brand guide.",
+   "expected": []
+  },
+  {
+   "id": 74,
+   "type": "noise_not_a_claim",
+   "text": "Support is available on weekdays from 9am to 7pm IST.",
+   "expected": []
+  },
+  {
+   "id": 75,
+   "type": "superlative",
+   "text": "Lumio is the best invoicing tool in India.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 76,
+   "type": "superlative",
+   "text": "We are #1 in invoicing.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 77,
+   "type": "superlative",
+   "text": "The fastest way to send invoices.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 78,
+   "type": "superlative",
+   "text": "Lumio is a world-class platform.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 79,
+   "type": "superlative",
+   "text": "Unbeatable value for freelancers.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 80,
+   "type": "superlative",
+   "text": "The most trusted invoicing app.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 81,
+   "type": "superlative",
+   "text": "Lumio is the cheapest option for small shops.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 82,
+   "type": "superlative",
+   "text": "Our unmatched speed saves you time.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 83,
+   "type": "superlative",
+   "text": "The leading invoicing platform for small business.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 84,
+   "type": "superlative",
+   "text": "Lumio is the only tool you need.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 85,
+   "type": "absolute",
+   "text": "Zero risk, cancel any time.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 86,
+   "type": "absolute",
+   "text": "100% accurate invoices, every time.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 87,
+   "type": "absolute",
+   "text": "Our service is proven to cut late payments.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 88,
+   "type": "absolute",
+   "text": "Always available when you need us.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 89,
+   "type": "absolute",
+   "text": "Lumio is available 24/7.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 90,
+   "type": "absolute",
+   "text": "Unlimited invoices on every plan.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 91,
+   "type": "absolute",
+   "text": "It is a foolproof way to get paid.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 92,
+   "type": "absolute",
+   "text": "Lumio never fails.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 93,
+   "type": "absolute",
+   "text": "We guarantee on-time payments.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 94,
+   "type": "absolute",
+   "text": "Risk-free for every customer.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 95,
+   "type": "certification",
+   "text": "Lumio is GDPR compliant.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 96,
+   "type": "certification",
+   "text": "We are SOC 2 certified.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 97,
+   "type": "certification",
+   "text": "HIPAA compliant invoicing.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 98,
+   "type": "certification",
+   "text": "Award-winning customer support.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 99,
+   "type": "certification",
+   "text": "Lumio is PCI-DSS certified.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 100,
+   "type": "certification",
+   "text": "Our platform is accredited by industry bodies.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 101,
+   "type": "certification",
+   "text": "ISO 9001 certified processes.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 102,
+   "type": "comparison",
+   "text": "Lumio is better than Zoho.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 103,
+   "type": "comparison",
+   "text": "Cheaper than Tally for small teams.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 104,
+   "type": "comparison",
+   "text": "Faster than any other tool.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 105,
+   "type": "comparison",
+   "text": "Smarter than spreadsheets.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 106,
+   "type": "comparison",
+   "text": "Easier than QuickBooks.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 107,
+   "type": "offer",
+   "text": "Limited-time offer: sign up today.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 108,
+   "type": "offer",
+   "text": "Money-back guarantee on all plans.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 109,
+   "type": "offer",
+   "text": "No hidden fees, ever.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 110,
+   "type": "offer",
+   "text": "Today only: double the storage.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 111,
+   "type": "offer",
+   "text": "Offer ends soon.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 112,
+   "type": "offer",
+   "text": "Free forever for freelancers.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 113,
+   "type": "offer_supported",
+   "text": "Free trial for every new account.",
+   "expected": []
+  },
+  {
+   "id": 114,
+   "type": "offer_supported",
+   "text": "Start your free trial today.",
+   "expected": []
+  },
+  {
+   "id": 115,
+   "type": "expired_source",
+   "text": "The Legacy plan costs Rs. 299 per month.",
+   "expected": [
+    "C-3"
+   ]
+  },
+  {
+   "id": 116,
+   "type": "expired_source",
+   "text": "Legacy plan: just Rs. 299 a month.",
+   "expected": [
+    "C-3"
+   ]
+  },
+  {
+   "id": 117,
+   "type": "expired_source",
+   "text": "Stay on Legacy for Rs. 299 each month.",
+   "expected": [
+    "C-3"
+   ]
+  },
+  {
+   "id": 118,
+   "type": "expired_source",
+   "text": "The Legacy plan is Rs. 299 per month.",
+   "expected": [
+    "C-3"
+   ]
+  },
+  {
+   "id": 119,
+   "type": "implied_absolute",
+   "text": "Our help desk never sleeps.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 120,
+   "type": "implied_absolute",
+   "text": "Support is there for you around the clock.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 121,
+   "type": "implied_absolute",
+   "text": "Our team answers at any hour of the day or night.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 122,
+   "type": "implied_absolute",
+   "text": "Reach support day and night.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 123,
+   "type": "implied_absolute",
+   "text": "Lumio never goes down.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 124,
+   "type": "implied_absolute",
+   "text": "Help is available seven days a week.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 125,
+   "type": "implied_absolute",
+   "text": "Our assistants are on call non-stop.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 126,
+   "type": "implied_absolute",
+   "text": "Customer care that never closes.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 127,
+   "type": "implied_absolute",
+   "text": "You will never face downtime with Lumio.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 128,
+   "type": "implied_absolute",
+   "text": "Our team never takes a day off.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 129,
+   "type": "implied_absolute",
+   "text": "You will never be left waiting for help.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 130,
+   "type": "implied_absolute",
+   "text": "Help is a message away, whatever the hour.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 131,
+   "type": "implied_absolute",
+   "text": "You will never see Lumio offline.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 132,
+   "type": "implied_absolute",
+   "text": "Zero downtime, guaranteed.",
+   "expected": [
+    "C-1",
+    "C-6"
+   ]
+  },
+  {
+   "id": 133,
+   "type": "implied_absolute",
+   "text": "Every invoice, flawlessly delivered.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 134,
+   "type": "implied_quantity",
+   "text": "Millions of users rely on Lumio Invoice.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 135,
+   "type": "implied_quantity",
+   "text": "Tens of thousands of customers trust us.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 136,
+   "type": "implied_quantity",
+   "text": "Hundreds of thousands of businesses invoice with Lumio.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 137,
+   "type": "implied_quantity",
+   "text": "Millions of happy customers love Lumio.",
+   "expected": [
+    "C-6"
+   ]
+  },
+  {
+   "id": 138,
+   "type": "implied_quantity_supported",
+   "text": "Thousands of customers rely on Lumio.",
+   "expected": []
+  },
+  {
+   "id": 139,
+   "type": "implied_quantity_supported",
+   "text": "Thousands of businesses use Lumio daily.",
+   "expected": []
+  },
+  {
+   "id": 140,
+   "type": "implied_quantity_supported",
+   "text": "Hundreds of customers joined this week.",
+   "expected": []
+  },
+  {
+   "id": 141,
+   "type": "implied_quantity_supported",
+   "text": "Thousands of ideas shape our roadmap.",
+   "expected": []
+  },
+  {
+   "id": 142,
+   "type": "implied_quantity",
+   "text": "Millions of invoices are sent through Lumio every year.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 143,
+   "type": "implied_quantity",
+   "text": "Hundreds of thousands of invoices go out each day.",
+   "expected": [
+    "C-4"
+   ]
+  },
+  {
+   "id": 144,
+   "type": "implied_superlative",
+   "text": "Lumio is second to none.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 145,
+   "type": "implied_superlative",
+   "text": "An unrivalled invoicing experience.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 146,
+   "type": "implied_superlative",
+   "text": "Nobody does invoicing better than Lumio.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 147,
+   "type": "implied_superlative",
+   "text": "The gold standard in invoicing.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 148,
+   "type": "implied_superlative",
+   "text": "In a league of its own.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 149,
+   "type": "implied_superlative",
+   "text": "Unparalleled speed and accuracy.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 150,
+   "type": "implied_superlative",
+   "text": "Simply the market leader.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 151,
+   "type": "implied_superlative",
+   "text": "Our product is beyond compare.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 152,
+   "type": "implied_superlative",
+   "text": "No one does it better.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 153,
+   "type": "implied_superlative",
+   "text": "There is nothing else like Lumio.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 154,
+   "type": "implied_superlative",
+   "text": "The invoicing app everyone prefers.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 155,
+   "type": "implied_superlative",
+   "text": "Quite simply peerless.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 156,
+   "type": "implied_superlative",
+   "text": "Hands down the finest invoicing software.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 157,
+   "type": "implied_superlative",
+   "text": "A truly world-beating product.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 158,
+   "type": "implied_certification",
+   "text": "Bank-grade security protects your data.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 159,
+   "type": "implied_certification",
+   "text": "Military-grade encryption keeps invoices safe.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 160,
+   "type": "implied_certification",
+   "text": "Fully audited by independent experts.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 161,
+   "type": "implied_certification",
+   "text": "Independently verified security.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 162,
+   "type": "implied_certification",
+   "text": "Your data is completely secure.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 163,
+   "type": "implied_certification",
+   "text": "Unhackable invoicing.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 164,
+   "type": "implied_certification",
+   "text": "We have passed every security audit.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 165,
+   "type": "implied_certification",
+   "text": "Security that meets all industry standards.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 166,
+   "type": "implied_certification",
+   "text": "Safer than a vault.",
+   "expected": [
+    "C-1"
+   ]
+  },
+  {
+   "id": 167,
+   "type": "implied_comparison",
+   "text": "We leave the competition far behind.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 168,
+   "type": "implied_comparison",
+   "text": "Unlike other tools, Lumio gets it right.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 169,
+   "type": "implied_comparison",
+   "text": "Lumio outperforms every rival.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 170,
+   "type": "implied_comparison",
+   "text": "Beats the competition on price.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 171,
+   "type": "implied_comparison",
+   "text": "Other platforms can't match our speed.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 172,
+   "type": "implied_comparison",
+   "text": "Ahead of the competition in every way.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 173,
+   "type": "implied_comparison",
+   "text": "While others struggle with GST, we make it easy.",
+   "expected": [
+    "C-5"
+   ]
+  },
+  {
+   "id": 174,
+   "type": "implied_comparison",
+   "text": "No competitor even comes close.",
+   "expected": [
+    "C-5"
+   ]
+  }
+ ]
+}

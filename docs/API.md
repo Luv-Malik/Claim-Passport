@@ -59,3 +59,16 @@ All endpoints return JSON. Send `Authorization: Bearer <token>` (from `POST /api
 | `GET /api/audit` | manager, admin | audit trail and AI log |
 | `GET /api/users` | manager, admin | people |
 | `POST /api/users` | admin | create a user |
+
+## Round 3 endpoints
+| Method and path | Who | Purpose |
+|---|---|---|
+| GET/PUT `/api/settings` | all read; manager changes `hybrid`; admin changes `slack_webhook_url`, `webhook_url`, `webhook_secret` | Verification mode and channels (addresses are never returned) |
+| PUT `/api/notification-prefs` | self | `email_enabled`, `slack_enabled`, `webhook_enabled`, `digest_enabled` |
+| POST `/api/settings/test-alert` | manager | Test every configured channel |
+| GET `/api/scheduler`, POST `/api/scheduler/run` | manager | Background scan status, run now |
+| GET `/api/accuracy/latest`, POST `/api/accuracy/run` | reviewer+ read; manager run | Accuracy Lab |
+| GET `/api/contents/<id>/original` | visible content | Decrypted original upload |
+| GET `/api/contents/<id>/pages`, `/pages/<n>` | visible content | PDF page image (data URL) with outlined problems |
+| GET `/api/contents/<id>/export`, `/export/report` | visible content | Corrected .docx / .pptx and what could not be applied |
+| POST/GET/DELETE `/api/vault/logo` | manager upload; all read | Approved logo for the V-4 check |

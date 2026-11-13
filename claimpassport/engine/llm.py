@@ -47,3 +47,23 @@ class LLMClient:
             return items[:2], n1
         except Exception:
             return [], n1
+
+    def judge(self, sentence, candidates):
+        """Ask whether the approved facts support ONE sentence. Returns (answer_dict_or_None, masked_items).
+        The answer must be JSON with verdict, fact_id, quote (words copied from that fact) and reason.
+        The caller (judge.py) checks the citation; an uncited answer is never trusted."""
+        sentence_m, n1 = mask_pii(sentence)
+        facts = "\n".join(f"[{c['id']}] {c['statement']}" for c in candidates)
+        prompt = (
+            "You check one marketing sentence against a list of APPROVED FACTS. Decide if the facts support the "
+            "sentence, contradict it, or are unrelated to it. Be strict: say 'supports' only when a fact says the same "
+            "thing, and 'contradicts' only when a fact clearly says something different about the same subject.\n"
+            f"SENTENCE: {sentence_m}\nAPPROVED FACTS:\n{facts}\n"
+            'Answer with ONE JSON object and nothing else: {"verdict": "supports|contradicts|unrelated|unsure", '
+            '"fact_id": <id of the fact you relied on, or null>, "quote": "<words copied exactly from that fact>", '
+            '"reason": "<one short sentence>"}')
+        try:
+            text = self._post(prompt).strip()
+            return json.loads(text[text.index("{"): text.rindex("}") + 1]), n1
+        except Exception:
+            return None, n1
