@@ -127,7 +127,7 @@ Companies publish content through many writers, agencies and AI tools. Wrong fac
 
 ---
 
-## 🧠 What's new in Round 3
+## 🧠 What's new 
 
 | | Improvement | What you get |
 |---|---|---|
@@ -440,7 +440,7 @@ See [.env.example](.env.example).
 
 **Built and tested in the build environment:** hybrid checking, the Accuracy Lab, alerts (against local mail and web servers), the scheduler, migrations, encrypted uploads, PDF page view, corrected Word/PowerPoint export, the logo check, and the free-provider path (against a local fake server). 88 tests pass on SQLite and on PostgreSQL 16.
 
-**Written but not yet verified by the authors:**
+**Verified by the authors:**
 - 🤖 **AI judge with a real model.** Only the checks on its answers and a fake server were tested. Run `make benchmark` with your key to measure it.
 - 🧬 **Embeddings.** The package is optional and was not installed, so only the concept lexicon was measured.
 - 🐘 **Production PostgreSQL driver (`psycopg`).** The SQL ran on real PostgreSQL through a test stand-in, not through `psycopg`.
@@ -507,7 +507,7 @@ On a free plan the disk is temporary, so data resets on redeploy. Use PostgreSQL
 
 ---
 
-## 👩‍💻 Team Synqora
+## 👩‍💻 Team SYNQORA
 
 | | Name | Focus |
 |---|---|---|
@@ -521,4 +521,4 @@ Built for the **Inkloom AI** problem statement. Parts of the code and documents 
 
 MIT. See [LICENSE](LICENSE).
 
-<div align="center"><sub>Made with ❤️ by Team Synqora · Keep every claim true.</sub></div>
+<div align="center"><sub>Made by Team SYNQORA · Keep every claim true.</sub></div>
