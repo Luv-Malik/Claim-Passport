@@ -10,11 +10,15 @@ If it is empty, the SQLite file in CP_DB_PATH is used."""
 import json
 import sqlite3
 import threading
+import time
 from pathlib import Path
 
 # Tables with no auto-numbered id column.
 # INSERT into these must not use RETURNING id.
 NO_ID_TABLES = {"settings", "notification_prefs", "schema_migrations"}
+
+# How many times to retry a SQLite write that hits a lock.
+LOCK_RETRIES = 5
 
 
 def jdump(v):
@@ -82,9 +86,14 @@ class DB:
         else:
             if self.target != ":memory:":
                 Path(self.target).parent.mkdir(parents=True, exist_ok=True)
-            # Wait up to 30s for a lock instead of failing after 5s.
+            # isolation_level=None is autocommit: every statement ends
+            # right away, so no transaction is left open holding a lock.
+            # timeout=30 waits up to 30s for a lock instead of 5s.
             self.conn = sqlite3.connect(
-                self.target, timeout=30, check_same_thread=False
+                self.target,
+                timeout=30,
+                check_same_thread=False,
+                isolation_level=None,
             )
             self.conn.row_factory = sqlite3.Row
             self.conn.execute("PRAGMA foreign_keys=ON")
@@ -100,6 +109,19 @@ class DB:
     def kind(self):
         return "postgresql" if self.pg else "sqlite"
 
+    # ---------------------------------------------------------- helpers
+    def _sqlite_exec(self, sql, params=()):
+        """Run one SQLite statement, retrying if the database is locked."""
+        for attempt in range(LOCK_RETRIES):
+            try:
+                return self.conn.execute(sql, params)
+            except sqlite3.OperationalError as exc:
+                locked = "locked" in str(exc).lower()
+                if locked and attempt < LOCK_RETRIES - 1:
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                raise
+
     # ---------------------------------------------------------- schema
     def exec_ddl(self, statements):
         """Run schema statements.
@@ -111,19 +133,12 @@ class DB:
         else:
             pk = "INTEGER PRIMARY KEY AUTOINCREMENT"
         with self.lock:
-            try:
-                for st in statements:
-                    st = st.replace("{PK}", pk)
-                    if self.pg:
-                        self.conn.execute(to_pg(st), ())
-                    else:
-                        self.conn.execute(st)
-                if not self.pg:
-                    self.conn.commit()
-            except Exception:
-                if not self.pg:
-                    self.conn.rollback()
-                raise
+            for st in statements:
+                st = st.replace("{PK}", pk)
+                if self.pg:
+                    self.conn.execute(to_pg(st), ())
+                else:
+                    self._sqlite_exec(st)
 
     def init(self):
         from . import migrations
@@ -141,7 +156,7 @@ class DB:
                 if cur.description:
                     return [dict(r) for r in cur.fetchall()]
                 return []
-            cur = self.conn.execute(sql, self._params(params))
+            cur = self._sqlite_exec(sql, self._params(params))
             return [dict(r) for r in cur.fetchall()]
 
     def one(self, sql, params=()):
@@ -164,13 +179,7 @@ class DB:
                     rows = cur.fetchall()
                     return rows[0]["id"] if rows else None
                 return cur.rowcount
-            try:
-                cur = self.conn.execute(sql, self._params(params))
-                self.conn.commit()
-            except Exception:
-                # Never leave a transaction open: it keeps the DB locked.
-                self.conn.rollback()
-                raise
+            cur = self._sqlite_exec(sql, self._params(params))
             if sql.lstrip()[:6].upper() == "INSERT":
                 return cur.lastrowid
             return cur.rowcount
