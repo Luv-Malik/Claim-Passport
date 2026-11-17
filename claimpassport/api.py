@@ -151,7 +151,10 @@ def create_app(overrides=None):
         if not u or not security.verify_password(b.get("password") or "", u["password_hash"]):
             failures[ip].append(now)
             return jsonify(error="Wrong email or password."), 401
-        audit.log(db, u["name"], "login", "user", u["id"])
+        try:
+    audit.log(db, u["name"], "login", "user", u["id"])
+except Exception:
+    pass
         return jsonify(token=security.make_token(u, cfg["SECRET_KEY"], cfg["TOKEN_HOURS"]),
                        user={k: u[k] for k in ("id", "name", "email", "role", "team")})
 
